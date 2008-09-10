@@ -1,0 +1,200 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+	<title>jQuery Minesweeper</title>
+
+	<script src="jquery.js" type="text/javascript" charset="utf-8"></script>
+	<script src="minesweeper.js" type="text/javascript" charset="utf-8"></script>
+	<script type="text/javascript" charset="utf-8">
+		$(document).ready(function () {
+			
+			var ms, MAX_DIMENSIONS = 30, DEFAULT_DIMENSION = 10, BOMB_INC = 5;
+			$('#rows,#cols')
+				.each(function () {
+					var option;
+					for (var i = 1; i <= 30; i++) {
+						option = $('<option>' + i + '</option>');
+						if (i == DEFAULT_DIMENSION) {
+							option.attr('selected', true);
+						}
+						$(this).append(option);
+					}
+				})
+				.change(function () {
+					$('#bombs').empty();
+					var max = parseInt($('#rows').val()) * parseInt($('#cols').val());
+					for (var i = BOMB_INC; i <= max; i += BOMB_INC) {
+						$('#bombs').append('<option>' + i + '</option>');
+					}
+				})
+				.change();
+			
+			$('#minesweeper_form')
+				.bind('submit', function (e) { e.preventDefault (); })
+				.bind('click', function (e) {
+					e.preventDefault();
+					var target = $(e.target);
+					if (target.is('#generate')) {
+						if (ms) { $('#minesweeper_board').empty(); delete ms }
+						var o = {
+							rows:  parseInt($('#rows').val()),
+							cols:  parseInt($('#cols').val()),
+							bombs: parseInt($('#bombs').val())
+						};
+						
+						ms = $('#minesweeper_board').minesweeper(o, true);
+					} else if (target.is('#reset')) {
+						ms.reset().play();
+					}
+				});
+			
+			var updateStatus = 	function () {
+					if (ms.isPlaying ()) {
+						$('#status span').text(ms.bombsRemaining());
+					}
+				};
+			$('#minesweeper_board').bind('gameinput', updateStatus);
+		})
+	</script>
+
+	<style type="text/css" media="screen">
+		body {
+			font-family: 'Helvetica Neue';
+			color: #555;
+		}
+		
+		body h1 {
+			font-weight: normal;
+		}
+		
+		body h1 span {
+			color: #333;
+		}
+		
+		body h1 span.version {
+			font-size: 0.6em;
+			color: #999;
+		}
+		
+		#minesweeper_board {
+			float: left;
+			margin-left: 2em;
+		}
+		
+		#minesweeper_board .board {
+			border: 1px solid #888;
+			overflow: auto;
+		}
+		
+		#minesweeper_board div.cell {
+			width: 20px;
+			padding-top: 20px;
+			height: 0;
+			overflow: hidden;
+			background-color: #ddd;
+			border-left: 1px solid #fff;
+			border-top: 1px solid #fff;
+			border-right: 1px solid #bbb;
+			border-bottom: 1px solid #bbb;
+			text-align: center;
+			line-height: 20px;
+			font-size: 14px;
+			float: left;
+		}
+		
+		#minesweeper_board div.cell.visible {
+			height: 20px;
+			padding-top: 0;
+			background-color: #eee;
+			border-left: 1px solid #eee;
+			border-top: 1px solid #eee;
+			border-right: 1px solid #ddd;
+			border-bottom: 1px solid #ddd;
+		}
+		
+		#minesweeper_board .playing div.cell:hover {
+			cursor: pointer;
+			background-color: #eee;
+		}
+		
+		#minesweeper_board .playing div.cell:active {
+			background-color: #ddd;
+			border-left: 1px solid #bbb;
+			border-top: 1px solid #bbb;
+			border-right: 1px solid #fff;
+			border-bottom: 1px solid #fff;
+		}
+		
+		#minesweeper_board div.cell.visible.bomb {
+			background: url(bomb.png) no-repeat center #F66;
+			border: 1px solid #800000;
+		}
+		
+		#minesweeper_board div.cell.flag {
+			background-image: url(flag.png);
+			background-repeat: no-repeat;
+			background-position: center;
+		}
+		
+		#minesweeper_board div.cell.one   { color: #00f; }
+		#minesweeper_board div.cell.two   { color: #008000; }
+		#minesweeper_board div.cell.three { color: #f00; }
+		#minesweeper_board div.cell.four  { color: #800040; }
+		#minesweeper_board div.cell.five  { color: #FF8000; }
+		#minesweeper_board div.cell.six   { color: #008080; }
+		#minesweeper_board div.cell.seven { color: #FF0080; }
+		#minesweeper_board div.cell.eight { color: #004080; }
+		
+		select {
+			float: left;
+			width: 4em;
+		}
+		
+		label {
+			float: left;
+			clear: left;
+			width: 5em;
+			margin-bottom: 1em;
+			line-height: 1.4em;
+		}
+		
+		form {
+			float: left;
+		}
+		
+		.buttons {
+			clear: left;
+			margin-bottom: 1em;
+		}
+	</style>
+</head>
+
+<body>
+
+	<h1>jQuery <span>Minesweeper</span> <span class="version">0.1</span></h1>
+	
+	<div id="status">
+		Bombs Left: <span>-</span>
+	</div>
+	
+	<form id="minesweeper_form" method="get" action="">
+		<label for="rows">Rows</label>
+		<select name="rows" id="rows"></select>
+		<label for="cols">Columns</label>
+		<select name="cols" id="cols"></select>
+		<label for="bombs">Bombs</label>
+		<select name="bombs" id="bombs"></select>
+		<div class="buttons">
+			<button id="generate">Generate</button>
+			<button id="reset">Reset</button>
+		</div>
+	</form>
+	
+	<div id="minesweeper_board"></div>
+
+</body>
+</html>
