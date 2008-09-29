@@ -51,8 +51,7 @@ function _bombCount (row, col, rows, cols, coords) {
 	var minCol = Math.max(0, col - 1), maxCol = Math.min(cols - 1, col + 1);
 	for (var i = minRow; i <= maxRow; i++) {
 		for (var j = minCol; j <= maxCol; j++) {
-			if (i == row && j == col) continue; // Skip the middle
-			if ($.inArray([i, j].join(','), coords) >= 0) {
+			if ((i != row || j != col) && $.inArray([i, j].join(','), coords) >= 0) {
 				count++;
 			}
 		}
@@ -60,9 +59,10 @@ function _bombCount (row, col, rows, cols, coords) {
 	return count;
 }
 
-this.Minesweeper = function (element, options) {
+var Minesweeper = window.Minesweeper = function (element, options) {
 
-	var that  = {}, left,
+	var ms    = {},
+		left  = 0,
 		vars  = Minesweeper.vars,
 		rows  = options.rows,
 		cols  = options.cols,
@@ -70,41 +70,43 @@ this.Minesweeper = function (element, options) {
 		map   = [],
 		board = $('<div />')
 			.addClass(vars.BOARD_CLASS)
-			.appendTo(element);
+			.appendTo(element),
 	
-	// Recursive function, probably need to find a better way since many
-	// browsers will crap out at fairly small recursion levels.
-	var _floodFill = function (row, col) {
-		if (row < 0 || row > rows - 1 ||
-			col < 0 || col > cols - 1 ||
-			map[row][col].hasClass(vars.VISIBLE_CLASS)) {
-			return;
-		}
-		
-		map[row][col].addClass(vars.VISIBLE_CLASS);
-		left--;
-
-		if (left == bombs) {
-			board.find('.' + vars.BOMB_CLASS).addClass(vars.FLAG_CLASS);
-			that.stop();
-		}
-
-		if (!map[row][col].hasClass(vars.NUMBER_CLASSES[0])) {
-			return this;
-		}
-
-		for (var i = row - 1; i <= row + 1; i++) {
-			for (var j = col - 1; j <= col + 1; j++) {
-				if (i == row && j == col) continue;
-				_floodFill(i, j);
+		// Recursive function, probably need to find a better way since many
+		// browsers will crap out at fairly small recursion levels.
+		_floodFill = function (row, col) {
+			if (row < 0 || row > rows - 1 ||
+				col < 0 || col > cols - 1 ||
+				map[row][col].hasClass(vars.VISIBLE_CLASS)) {
+				return;
 			}
-		}
-	};
+		
+			map[row][col].addClass(vars.VISIBLE_CLASS);
+			left--;
 
-	var _triggerBomb = function () {
-		board.find('.' + vars.BOMB_CLASS).addClass(vars.VISIBLE_CLASS);
-		that.stop();
-	};
+			if (left == bombs) {
+				board.find('.' + vars.BOMB_CLASS).addClass(vars.FLAG_CLASS);
+				ms.stop();
+			}
+
+			if (!map[row][col].hasClass(vars.NUMBER_CLASSES[0])) {
+				return this;
+			}
+
+			for (var i = row - 1; i <= row + 1; i++) {
+				for (var j = col - 1; j <= col + 1; j++) {
+					if (i == row && j == col) {
+						continue;
+					}
+					_floodFill(i, j);
+				}
+			}
+		},
+
+		_triggerBombs = function () {
+			board.find('.' + vars.BOMB_CLASS).addClass(vars.VISIBLE_CLASS);
+			ms.stop();
+		};
 	
 	if (bombs > left) {
 		bombs = remaining;
@@ -127,13 +129,13 @@ this.Minesweeper = function (element, options) {
 	board
 		.bind('click', function (e) {
 			e.preventDefault();
-			if (that.isPlaying()) {
+			if (ms.isPlaying()) {
 				var target = $(e.target);
 				if (target.isInvisibleCell()) {
 					//&& !target.hasClass(vars.FLAG_CLASS)) {
 					var row = target.parent().prevAll().size();
 					var col = target.prevAll().size();
-					var fn  = target.isBomb() ? _triggerBomb : _floodFill;
+					var fn  = target.isBomb() ? _triggerBombs : _floodFill;
 					fn(row, col);
 				}	
 			}
@@ -141,7 +143,7 @@ this.Minesweeper = function (element, options) {
 		})
 		.bind('contextmenu', function (e) {
 			e.preventDefault();
-			if (that.isPlaying()) {
+			if (ms.isPlaying()) {
 				var target = $(e.target);
 				if (target.isInvisibleCell()) {
 					target.toggleClass(vars.FLAG_CLASS);
@@ -150,15 +152,15 @@ this.Minesweeper = function (element, options) {
 			$(element).trigger('gameinput');
 		});
 	
-	$.extend(that, {
+	$.extend(ms, {
 		
 		reset: function () {
 			
-			var coords = _generateBombs(rows, cols, bombs), cell, that = this;
+			var coords = _generateBombs(rows, cols, bombs),
+				cell   = null;
 			
-			board
-				.find('.' + vars.CELL_CLASS)
-					.attr('class', vars.CELL_CLASS);
+			board.find('.' + vars.CELL_CLASS)
+				.attr('class', vars.CELL_CLASS);
 			
 			for (var row = 0; row < rows; row++) {
 				for (var col = 0; col < cols; col++) {
@@ -193,7 +195,6 @@ this.Minesweeper = function (element, options) {
 		},
 		
 		bombsRemaining: function () {
-			console.log(bombs, board.find('.' + vars.FLAG_CLASS).size());
 			return (bombs - board.find('.' + vars.FLAG_CLASS).size());
 		},
 		
@@ -204,17 +205,17 @@ this.Minesweeper = function (element, options) {
 		
 	});
 	
-	return that.reset().play();
+	return ms.reset().play();
 };
 
 Minesweeper.vars = {
-	BOARD_CLASS: 'board',
-	ROW_CLASS: 'row',
-	CELL_CLASS: 'cell',
-	BOMB_CLASS: 'bomb',
-	VISIBLE_CLASS: 'visible',
-	FLAG_CLASS: 'flag',
-	PLAYING_CLASS: 'playing',
+	BOARD_CLASS   : 'board',
+	ROW_CLASS     : 'row',
+	CELL_CLASS    : 'cell',
+	BOMB_CLASS    : 'bomb',
+	VISIBLE_CLASS : 'visible',
+	FLAG_CLASS    : 'flag',
+	PLAYING_CLASS : 'playing',
 	NUMBER_CLASSES: ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight']
 };
 
@@ -231,10 +232,16 @@ $.fn.extend({
 	
 	minesweeper: function (options, getInstance) {
 		options = $.extend({}, $.fn.minesweeper.options, options);
-		var ms = new Minesweeper (this[0], options);
+		var ms = Minesweeper(this[0], options);
 		return getInstance ? ms : this;
 	}
 	
 });
+
+$.fn.minesweeper.options = {
+	rows: 10,
+	cols: 10,
+	bombs: 5
+};
 
 })(jQuery);
